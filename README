@@ -1,0 +1,16 @@
+* A k-nearest neighbours classifier
+
+** Usage
+
+   Coming soon (use knn --help for instructions)
+
+** Format
+   Objects should be presented in the following form :
+
+   ID CLASS feature1:value1 .... featuren:valuen
+
+   where :
+   - ID :: is a string identifying the object
+   - CLASS :: is the class of the object
+   - feature/value pairs :: features are are strings while value must
+        be numbers
