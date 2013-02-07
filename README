@@ -12,5 +12,4 @@
    where :
    - ID :: is a string identifying the object
    - CLASS :: is the class of the object
-   - feature/value pairs :: features are are strings while value must
-        be numbers
+   - feature/value pairs :: features are are strings while values must be numbers
