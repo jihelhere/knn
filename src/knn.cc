@@ -18,7 +18,7 @@ fprintf(stderr, "%s usage: %s [options] < file\n", program_name, program_name);
  fprintf(stderr, "      --train,-t             : example file\n");
  fprintf(stderr, "      --threads,-j           : nb of threads (default is %d)\n", NUM_THREADS);
  fprintf(stderr, "      --k,-k                 : nb of neighbours (default is %d)\n", NUM_NEIGHBOURS);
- fprintf(stderr, "      --distance,-d          : type of distance euclidean or cosine (default is %d)\n", NUM_NEIGHBOURS);
+ fprintf(stderr, "      --distance,-d          : type of distance euclidean or cosine (default is %s)\n", DISTANCE);
  fprintf(stderr, "      --eval,-e              : evaluation mode\n");
  fprintf(stderr, "      -help,-h               : print this message\n");
 }
