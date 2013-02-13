@@ -18,6 +18,8 @@ threadns::mutex mutex_examples;
 threadns::condition_variable cond_process;
 
 namespace knn {
+enum distance_type {EUCLIDEAN, COSINE};
+
 
 struct file_reader
 {
@@ -49,19 +51,118 @@ struct file_reader
 };
 
 
-struct Predictor {
+struct MaxMinNormaliser
+{
+  std::vector<double> mins;
+  std::vector<double> maxs;
 
-  enum distance_type {EUCLIDEAN, COSINE};
+  MaxMinNormaliser() : mins(), maxs() {};
+
+  void init(std::vector<Example*> training_examples)
+  {
+    for(const auto& e: training_examples)
+    {
+      for(const auto& f : e->features)
+      {
+        if(mins.size() <= f.id)
+          mins.resize(f.id+1, std::numeric_limits<double>::infinity());
+        if(maxs.size() <= f.id)
+          maxs.resize(f.id+1, - std::numeric_limits<double>::infinity());
+
+        if(f.value < mins[f.id])
+          mins[f.id] = f.value;
+        if(f.value > maxs[f.id])
+          maxs[f.id] = f.value;
+      }
+    }
+  }
+
+  void normalise(Example* e) const
+  {
+    for(auto& f : e->features)
+    {
+      f.value = (f.value - this->mins[f.id]) / (this->maxs[f.id] - this->mins[f.id]);
+    }
+  }
+
+
+};
+
+
+struct ZNormaliser
+{
+  std::vector<double> means;
+  std::vector<double> deviations;
+
+  ZNormaliser() : means(), deviations() {};
+
+  void init(std::vector<Example*> training_examples)
+  {
+    for(const auto& e: training_examples)
+    {
+      for(const auto& f : e->features)
+      {
+        if(means.size() <= f.id) means.resize(f.id+1, 0);
+        means[f.id] += f.value;
+      }
+    }
+    for (size_t i = 0; i < means.size(); ++i)
+    {
+      means[i] /= training_examples.size();
+    }
+    deviations.resize(means.size());
+
+    for(const auto& e: training_examples)
+    {
+      for(const auto& f : e->features)
+      {
+        deviations[f.id] = (f.value - means[f.id]) * (f.value - means[f.id]);
+      }
+    }
+
+    for (size_t i = 0; i < deviations.size(); ++i)
+    {
+      deviations[i] = std::sqrt( deviations[i] / (deviations.size() - 1));
+    }
+
+
+
+
+  }
+
+  void normalise(Example* e) const
+  {
+    for(auto& f : e->features)
+    {
+      f.value = (f.value - this->means[f.id]) / this->deviations[f.id];
+    }
+  }
+
+
+};
+
+
+template<class Normaliser>
+struct Predictor {
 
   int num_threads;
   std::vector<Example*> training_examples;
   unsigned k;
   distance_type dt;
+  Normaliser normaliser;
+
 
   Predictor(int numthreads, const std::string& trainname, unsigned K, distance_type DT) :
-      num_threads(numthreads), training_examples(), k(K), dt(DT)
+      num_threads(numthreads), training_examples(), k(K), dt(DT), normaliser()
   {
     load_train(trainname);
+    normaliser.init(training_examples);
+    std::for_each(training_examples.begin(), training_examples.end(),
+                  [&](Example *e)
+                  {
+                    normaliser.normalise(e);
+                  }
+                  );
   }
 
   void load_train(const std::string& filename)
@@ -100,7 +201,7 @@ struct Predictor {
 
     for(auto& e : training_examples)
     {
-      e->remove_noise(0.001);
+      e->remove_noise(0.0001);
     }
 
     fclose(fp);
@@ -108,14 +209,14 @@ struct Predictor {
 
   std::string predict(Example& example) {
 
-    example.remove_noise(0.001);
-
     std::priority_queue<Example> queue;
 
     threadns::thread tab[num_threads];
 
     for(int i = 0; i < num_threads; ++i) {
-      tab[i] = threadns::thread((dt == EUCLIDEAN) ? &Example::compute_distances : &Example::compute_similarities,
+      tab[i] = threadns::thread((dt == EUCLIDEAN) ?
+                                &Example::compute_distances :
+                                &Example::compute_similarities,
                                 &example,
                                 training_examples,
                                 i * training_examples.size() / num_threads,
@@ -140,7 +241,7 @@ struct Predictor {
     std::unordered_map<std::string,int> counts;
     while(!queue.empty())
     {
-      fprintf(stdout, "size: %lu\tcategory: %s\tdistance: %f\n", queue.size(), queue.top().category.c_str(), queue.top().distance);
+      // fprintf(stdout, "size: %lu\tcategory: %s\tdistance: %f\n", queue.size(), queue.top().category.c_str(), queue.top().distance);
       counts[queue.top().category] += 1;
       queue.pop();
     }
@@ -162,7 +263,17 @@ struct Predictor {
   }
 };
 
-std::map<Predictor::distance_type, std::string> dt2string({{Predictor::EUCLIDEAN, "euclidean"}, {Predictor::COSINE, "cosine"}});
-std::map<std::string, Predictor::distance_type> string2dt({{"euclidean", Predictor::EUCLIDEAN}, {"cosine", Predictor::COSINE}});
+std::map<distance_type, std::string>
+dt2string(
+    {
+      {EUCLIDEAN, "euclidean"},
+      {COSINE, "cosine"}
+    });
 
+std::map<std::string, distance_type>
+string2dt(
+    {
+      {"euclidean", EUCLIDEAN},
+      {"cosine", COSINE}
+    });
 }

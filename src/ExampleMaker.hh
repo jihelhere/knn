@@ -50,7 +50,8 @@ namespace knn {
 
         lock.unlock();
 
-	Example * e = new Example(string, true, true);
+        Example * e = new Example(string, true, true);
+        //	Example * e = new Example(string, false, true);
 
         lock_type lock2(*mutex_examples);
         if (examples.size() < lines.size())

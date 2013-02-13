@@ -7,7 +7,7 @@
 
 #define NUM_THREADS 1
 #define NUM_NEIGHBOURS 10
-#define DISTANCE "cosine";
+#define DISTANCE "cosine"
 
 
 
@@ -114,7 +114,8 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  knn::Predictor predictor(threads, train, k, knn::string2dt.at(distance));
+  knn::Predictor<knn::ZNormaliser>
+      predictor(threads, train, k, knn::string2dt.at(distance));
 
   fprintf(stderr, "\n\nTraining examples loaded\n\n");
 
@@ -130,7 +131,10 @@ int main(int argc, char** argv) {
 
     //    fprintf(stderr, "example: %d", total);
 
-    knn::Example example(buffer,true, false);
+    knn::Example example(buffer, true, false);
+    //knn::Example example(buffer, false, false);
+    example.remove_noise(0.0001);
+    predictor.normaliser.normalise(&example);
 
     std::string ref_example = example.category;
     std::string hyp_example = predictor.predict(example);
@@ -140,9 +144,9 @@ int main(int argc, char** argv) {
     {
       if(ref_example == hyp_example)
         ++correct;
+      fprintf(stderr, "correct: %d\ttotal: %d\taccuracy: %f\n", correct, total, double(correct)/total);
     }
   }
-
   if(eval)
   {
     fprintf(stderr, "correct: %d\ttotal: %d\taccuracy: %f\n", correct, total, double(correct)/total);
